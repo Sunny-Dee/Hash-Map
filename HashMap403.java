@@ -3,7 +3,7 @@ package csc403wk6;
 import java.util.ArrayList;
 
 
-public class HashMap403 <K extends Comparable<K>, V> {
+public class HashMap403 <K, V> {
 	private static int  capacity;
 	private static int MAX_LAMBDA;
 	private static final int VACANT = 0, 
@@ -12,10 +12,7 @@ public class HashMap403 <K extends Comparable<K>, V> {
 	private int status[];
 	//Since java doesn't allow an array of generic types --> list of entries. 
 	private ArrayList<Entry<K,V>> entries = new ArrayList<Entry<K,V>>();
-	
-//	private static final int[] PRIMES = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31,
-//		37, 41, 43,  47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 
-//		127, 131, 137, 139, 149, 151, 157, 163, 167, 173};
+
 	
 	public HashMap403(int cap, int max){
 		capacity = cap;
@@ -23,9 +20,9 @@ public class HashMap403 <K extends Comparable<K>, V> {
 		status = new int[capacity];
 	}
 	
-	private class Entry<K,V> {
-		private K key;
-		private V value;
+	public class Entry<K,V> {
+		public K key;
+		public V value;
 		
 		private Entry(K key, V value) {
 			this.key = key;
@@ -37,23 +34,53 @@ public class HashMap403 <K extends Comparable<K>, V> {
 	//get takes a key and returns the corresponding value. 
 	//if key not in the map returns null
 	public V get(K key) {
-		int low = 0, high = entries.size()-1;
-		while (low <= high) {
-			int mid = (low + high)/2;
-			int comp = entries.get(mid).key.compareTo(key);
-			if (comp == 0) 
-				return entries.get(mid).value;
-			else if (comp > 0)
-				high = mid-1;
-			else // comp < 0
-				low = mid + 1;
+		for (Entry entry : entries){
+			if (key.equals(entry.key))
+				return (V) entry.value;
+			}
+		return null;
 		}
+
+	
+	
+	/* 1. for put you'll hash on the key, that will determine the index in the list for that
+	 * particular entry
+	 * 2. if there is a collision fix it with double hashing 
+	 */
+	public V put(K key, V value) {
+		int p = hashCode(key);
+		
+		if (entries.contains(key)){
+			V oldVal = entries.get(p).value;
+			entries.get(p).value = value;
+			return oldVal;
+		}
+		
+		
+		if (status[p] == VACANT) {
+			entries.add(p, new Entry<K,V>(key, value));
+			return value;
+		}
+		
+		else{
+			p = nextProbe(key, p);
+			entries.add(p, new Entry<K,V>(key, value));
+			return value;
+		}
+
+//		for (int i=0; i<entries.size(); i++) {
+//			int comp = entries.get(i).key.compareTo(key);
+//			if (comp == 0) {
+//				V oldVal = entries.get(i).value;
+//				entries.get(i).value = value;
+//				return oldVal;
+//			}
+//			else if (comp > 0)
+//				entries.add(i, new Entry<K,V>(key, value));
+//		}
+//		entries.add(new Entry<K,V>(key, value));
 		return null;
 	}
-	
-	/* for put you'll hash on the key, that will determine the value for that
-	 * particular entry
-	 */
 	
 	private int hashCode(K x) {
 		probeNumber = 0;
@@ -73,8 +100,8 @@ public class HashMap403 <K extends Comparable<K>, V> {
 	
 	
 	private static boolean isPrime(int x) {
-		int sq = ((int) Math.sqrt(x));
-		for (int i=2; i<sq; i++)
+		//int sq = ((int) Math.sqrt(x));
+		for (int i=2; i<x; i++)
 			if (x % i == 0)
 				return false;
 		return true;
@@ -87,24 +114,25 @@ public class HashMap403 <K extends Comparable<K>, V> {
 		return x;
 	}
 	
+	public boolean contains(K key, V val) {
+		int p = hashCode(key);
+		while (status[p] != VACANT) {
+			if (status[p] == OCCUPIED &&
+				entries.get(p).equals(val))
+				return true;
+			p = nextProbe(key, p);
+		}
+		return false;
+	}
 	
-	
-	
-	/*Finds the next lowest prime from a list of prime numbers
-	 */
-//	private int findPrime(int p){
-//		int low = 0, high = PRIMES.length-1;
-//		while (low <= high) {
-//			int mid = (low + high)/2;
-//			int comp = PRIMES[mid] - p;
-//			if (comp == 0) 
-//					return PRIMES[mid - 1];
-//			else if (comp > 0)
-//				high = mid-1;
-//			else // comp < 0
-//				low = mid + 1;
-//		}
-//		return 0;
-//	}
+	public static void main(String[] args) {
+		System.out.println("Hash Map Double Hashing");
+		HashMap403<Integer, Integer> map = new HashMap403(5, 11);
+		
+		int x = prevPrime(9);
+		System.out.println(x);
+
+	}
+
 	
 }
