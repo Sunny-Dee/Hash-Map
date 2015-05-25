@@ -1,138 +1,216 @@
 package csc403wk6;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 
-public class HashMap403 <K, V> {
-	private static int  capacity;
-	private static int MAX_LAMBDA;
+
+public class HashMap403 <K, V> implements Iterable<V>{
+	private int INIT_CAPACITY = 5;
+	private double MAX_LAMBDA = .5;
+	
 	private static final int VACANT = 0, 
 			OCCUPIED = 1, DELETED = 2;
 	
-	private int status[];
-	//Since java doesn't allow an array of generic types --> list of entries. 
-	private ArrayList<Entry<K,V>> entries = new ArrayList<Entry<K,V>>();
-
 	
-	public HashMap403(int cap, int max){
-		capacity = cap;
-		MAX_LAMBDA = max;
+    private int status[];
+    private K[ ] keys;
+    private V[ ] vals; 
+	
+	
+	private int size = 0; // size of the set
+	private int capacity = INIT_CAPACITY;
+	
+	
+	public HashMap403(int initCapacity, double maxLambda) {
+		capacity = initCapacity;
+		MAX_LAMBDA = maxLambda;
 		status = new int[capacity];
+		keys = (K[ ]) new Object[capacity];
+	    vals = (V[ ]) new Object[capacity];
+	  }
+
+
+	
+	public String toString() {
+		return " size " + size + " capacity " + capacity + "\n" + toListvals().toString();
 	}
 	
-	public class Entry<K,V> {
-		public K key;
-		public V value;
-		
-		private Entry(K key, V value) {
-			this.key = key;
-			this.value = value;
-		}
+	private List<V> toListvals() {
+		List<V> values = new ArrayList<V>();
+		for (int i=0; i<capacity; i++)
+			if (status[i] == OCCUPIED)
+				values.add(vals[i]);
+		return values;
 	}
-
-
-	//get takes a key and returns the corresponding value. 
-	//if key not in the map returns null
-	public V get(K key) {
-		for (Entry entry : entries){
-			if (key.equals(entry.key))
-				return (V) entry.value;
+	
+	private List<K> toListKeys() {
+		List<K> keyList = new ArrayList<K>();
+		for (int i=0; i<capacity; i++)
+			if (status[i] == OCCUPIED)
+				keyList.add(keys[i]);
+		return keyList;
+	}
+	
+	public V put(K k, V v) {
+		int p = hashCode(k);
+		//System.out.println(p);
+		while (status[p] == OCCUPIED){ 
+			if (keys[p].equals(k)){
+				V oldVal = vals[p];
+				vals[p] = v;
+				return oldVal;
 			}
-		return null;
-		}
+			p = nextProbe(k, p);
 
+			}
+		
+		status[p] = OCCUPIED;
+		keys[p] = k;
+		vals[p] = v;
+		size++;
+		if (size/((double) capacity) > MAX_LAMBDA)
+			expandAndRehash();
+		//System.out.println(p);
+		return null;
+			
+	}
 	
-	
-	/* 1. for put you'll hash on the key, that will determine the index in the list for that
-	 * particular entry
-	 * 2. if there is a collision fix it with double hashing 
-	 */
-	public V put(K key, V value) {
+	public V get(K key) {
 		int p = hashCode(key);
 		
-		if (entries.contains(key)){
-			V oldVal = entries.get(p).value;
-			entries.get(p).value = value;
-			return oldVal;
-		}
-		
-		
-		if (status[p] == VACANT) {
-			entries.add(p, new Entry<K,V>(key, value));
-			return value;
-		}
-		
-		else{
+		while (status[p] != VACANT){
+			if (key.equals(keys[p])){
+				return vals[p];
+			}
 			p = nextProbe(key, p);
-			entries.add(p, new Entry<K,V>(key, value));
-			return value;
 		}
 
-//		for (int i=0; i<entries.size(); i++) {
-//			int comp = entries.get(i).key.compareTo(key);
-//			if (comp == 0) {
-//				V oldVal = entries.get(i).value;
-//				entries.get(i).value = value;
-//				return oldVal;
-//			}
-//			else if (comp > 0)
-//				entries.add(i, new Entry<K,V>(key, value));
-//		}
-//		entries.add(new Entry<K,V>(key, value));
 		return null;
-	}
+		}
 	
 	private int hashCode(K x) {
 		probeNumber = 0;
 		return (x.hashCode() & 0x7fffffff) % capacity;
 	}
+
 	
 	int probeNumber = 0;
+	int collisions = 0;
 	
-	private int nextProbe(K x, int p) {
-		return (p + probeNumber++* hashCode2(x)) % capacity;
+	
+	private int nextProbe(K k, int p) {
+		collisions++;
+		return (p + probeNumber++* hashCode2(k)) % capacity;
 	}
 	
 	private int hashCode2(K k){
 		int P = prevPrime(capacity);
-		return P - k.hashCode()%P;
+		return P - (k.hashCode()%P);
 	}
 	
-	
 	private static boolean isPrime(int x) {
-		//int sq = ((int) Math.sqrt(x));
-		for (int i=2; i<x; i++)
+		int sq = ((int) Math.sqrt(x));
+		for (int i=2; i<sq; i++)
 			if (x % i == 0)
 				return false;
 		return true;
 	}
 	
 	// the smallest prime number > x
+	private static int nextPrime(int x) {
+		do x++;
+		while (!isPrime(x));
+		return x;
+	}
+	
 	private static int prevPrime(int x) {
 		do x--;
 		while (!isPrime(x));
 		return x;
 	}
 	
-	public boolean contains(K key, V val) {
-		int p = hashCode(key);
+	
+	private void expandAndRehash() {
+		List<V> val = toListvals();
+		List<K> key = toListKeys();
+		capacity = nextPrime(capacity * 2);
+		keys = (K[]) new Object[capacity];
+		vals = (V[]) new Object[capacity];
+		status = new int[capacity];
+		int temp = size;
+		size = 0;
+		for (int i = 0; i<temp; i++){
+			put(key.get(i), val.get(i));}
+	}
+
+	
+	public boolean contains(K x) {
+		int p = hashCode(x);
 		while (status[p] != VACANT) {
 			if (status[p] == OCCUPIED &&
-				entries.get(p).equals(val))
+				keys[p].equals(x))
 				return true;
-			p = nextProbe(key, p);
+			p = nextProbe(x, p);
 		}
 		return false;
 	}
 	
+	public V remove(K x) {
+		int p = hashCode(x);
+		while (status[p] != VACANT) {
+			if (status[p] == OCCUPIED &&
+				keys[p].equals(x)) {
+				status[p] = DELETED;
+				size--;
+				return vals[p];
+			}
+			p = nextProbe(x, p);
+		}
+		return null;
+	}
+	
+	public Set<K> keySet(){
+		Set<K> keySet = new HashSet();; 
+		for (int i = 0; i<keys.length; i++){
+			if (keys[i] != null)
+				keySet.add(keys[i]);
+		}
+		return keySet;
+	}
+	
+
+	public Iterator<V> iterator() {
+		return toListvals().iterator();
+	}
+	
 	public static void main(String[] args) {
 		System.out.println("Hash Map Double Hashing");
-		HashMap403<Integer, Integer> map = new HashMap403(5, 11);
+		HashMap403<Integer, Integer> map = new HashMap403(7, .75);
+		map.put(0, 4);
+		map.put(2, 8);
+		map.put(7, 5);
+		map.put(7, 6);
+		map.put(9, 11);
+		map.put(11, 12);
+		map.put(13, 5);
+		map.put(12, 1);
 		
-		int x = prevPrime(9);
-		System.out.println(x);
+		System.out.println(map.get(7));
+		System.out.println(map.toString());
+		System.out.println(map.toListKeys());
+		
+		
+		System.out.println(map.get(7));
+		System.out.println(map.get(13));
+		
+		//map.remove(12);
+		System.out.println(map.toString());
+		System.out.println(map.keySet().toString());
 
 	}
-
-	
 }
+
